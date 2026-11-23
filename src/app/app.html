@@ -1,0 +1,153 @@
+<header class="page-header">
+  <h1>Alert console</h1>
+</header>
+
+<main class="alerts-container">
+  <h2>Alerts ({{ filteredAlerts().length }})</h2>
+
+  <div class="alert-filters">
+    @for (filter of filters; track filter.id) {
+      <div class="alert-filter">
+        <label [for]="filter.id">{{ filter.label }}</label>
+        <select #filterSelect [id]="filter.id" (change)="setFilter(filter.id, filterSelect.value)">
+          <option value="" selected>None</option>
+          @for (option of filter.options; track option) {
+            <option [value]="option">{{ option }}</option>
+          }
+        </select>
+      </div>
+    }
+  </div>
+
+  @let selected = selectedAlert();
+  <div class="alerts-layout" [class.has-selection]="selected !== undefined">
+    @if (filteredAlerts().length) {
+      <div class="alerts-table-container" role="region" aria-label="Alert table" tabindex="0">
+        <table class="alerts-table">
+          <thead>
+            <tr>
+              <th scope="col">ID</th>
+              <th scope="col">Source</th>
+              <th scope="col">Severity</th>
+              <th scope="col">Status</th>
+              <th scope="col">Created At</th>
+              <th scope="col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (alert of filteredAlerts(); track alert.id) {
+              <tr (click)="selectAlert(alert)" [class.is-selected]="alert === selected">
+                <th scope="row">
+                  <button
+                    class="alert-row-button"
+                    type="button"
+                    [attr.aria-expanded]="alert === selected"
+                    [attr.aria-controls]="alert === selected ? 'alert-details' : null"
+                  >
+                    {{ alert.id }}
+                  </button>
+                </th>
+                <td>{{ alert.source }}</td>
+                <td>
+                  <span class="alert-pill" [attr.data-severity]="alert.severity">{{
+                    alert.severity
+                  }}</span>
+                </td>
+                <td>
+                  <span class="alert-pill" [attr.data-status]="alert.status">{{
+                    alert.status
+                  }}</span>
+                </td>
+                <td>
+                  <time [attr.datetime]="alert.createdAt">{{
+                    alert.createdAt | date: 'MMM d, y, HH:mm'
+                  }}</time>
+                </td>
+                <td>
+                  @if (canResolve(alert)) {
+                    <button
+                      class="alert-resolve-button"
+                      type="button"
+                      [attr.aria-label]="'Resolve ' + alert.id"
+                      (click)="openResolution(alert, $event)"
+                    >
+                      Resolve
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    } @else {
+      <div class="alerts-empty" role="status">
+        <h3>No alerts match your filters</h3>
+        <p>Change or clear a filter to see more alerts.</p>
+      </div>
+    }
+
+    @if (selected; as alert) {
+      <aside class="timeline-panel" id="alert-details" aria-labelledby="alert-details-heading">
+        <h3 id="alert-details-heading">{{ alert.id }}</h3>
+        <dl class="alert-details">
+          <dt>Source</dt>
+          <dd>{{ alert.source }}</dd>
+          <dt>Severity</dt>
+          <dd>
+            <span class="alert-pill" [attr.data-severity]="alert.severity">{{
+              alert.severity
+            }}</span>
+          </dd>
+          <dt>Status</dt>
+          <dd>
+            <span class="alert-pill" [attr.data-status]="alert.status">{{ alert.status }}</span>
+          </dd>
+          <dt>Created At</dt>
+          <dd>
+            <time [attr.datetime]="alert.createdAt">{{
+              alert.createdAt | date: 'MMM d, y, HH:mm'
+            }}</time>
+          </dd>
+        </dl>
+        <h4 class="timeline-subheading">Timeline</h4>
+        <ol class="timeline">
+          @for (event of alert.history; track event.status) {
+            <li>
+              <span class="alert-pill" [attr.data-status]="event.status">{{ event.status }}</span>
+              @if (event.note) {
+                <span class="timeline-note">{{ event.note }}</span>
+              }
+              <time [attr.datetime]="event.ts">{{ event.ts | date: 'MMM d, y, HH:mm' }}</time>
+            </li>
+          }
+        </ol>
+
+        @if (canResolve(alert)) {
+          @let resolving = resolvingAlerts().has(alert.id);
+          <form
+            #resolutionForm
+            class="resolution-form"
+            (submit)="resolveAlert($event, alert, resolutionNote.value)"
+          >
+            <label for="resolution-note">Resolution note (required)</label>
+            <input
+              #resolutionNote
+              id="resolution-note"
+              name="resolutionNote"
+              type="text"
+              required
+              pattern=".*\S.*"
+              [readOnly]="resolving"
+            />
+            <button type="submit" [disabled]="resolving">
+              {{ resolving ? 'Resolving…' : 'Resolve' }}
+            </button>
+          </form>
+        }
+      </aside>
+    }
+  </div>
+</main>
+
+<router-outlet />
