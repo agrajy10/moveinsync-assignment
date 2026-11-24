@@ -46,13 +46,18 @@ export class App {
     options: [...new Set(dummyAlerts.map((alert) => alert[id]))],
   }));
 
-  private readonly selectedFilters = signal<Partial<Record<FilterId, string>>>({});
+  protected readonly selectedFilters = signal<Partial<Record<FilterId, string>>>({});
+  protected readonly hasActiveFilters = computed(() =>
+    filterFields.some(({ id }) => Boolean(this.selectedFilters()[id])),
+  );
 
   protected readonly filteredAlerts = computed(() => {
     const selected = this.selectedFilters();
-    return this.alerts().filter((alert) =>
-      filterFields.every(({ id }) => !selected[id] || alert[id] === selected[id]),
-    );
+    return this.alerts()
+      .filter((alert) =>
+        filterFields.every(({ id }) => !selected[id] || alert[id] === selected[id]),
+      )
+      .sort((first, second) => Date.parse(second.createdAt) - Date.parse(first.createdAt));
   });
 
   protected setFilter(id: FilterId, value: string): void {
@@ -62,6 +67,10 @@ export class App {
     if (alert && !this.filteredAlerts().includes(alert)) {
       this.selectedAlertId.set(undefined);
     }
+  }
+
+  protected clearFilters(): void {
+    this.selectedFilters.set({});
   }
 
   protected selectAlert(alert: Alert): void {

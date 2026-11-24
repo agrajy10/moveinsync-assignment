@@ -3,6 +3,10 @@ import { TestBed } from '@angular/core/testing';
 import { App } from './app';
 import { dummyAlerts } from './dummy-alerts';
 
+const newestFirst = [...dummyAlerts].sort((first, second) =>
+  second.createdAt.localeCompare(first.createdAt),
+);
+
 describe('App', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -52,7 +56,7 @@ describe('App', () => {
     ]);
   });
 
-  it('should render all 60 alerts with severity and status pills', async () => {
+  it('should render all 60 alerts newest first with severity and status pills', async () => {
     const fixture = TestBed.createComponent(App);
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
@@ -68,20 +72,20 @@ describe('App', () => {
     ]);
     expect(rows).toHaveLength(60);
     expect(rows.map((row) => row.querySelector('th')?.textContent.trim())).toEqual(
-      dummyAlerts.map((alert) => alert.id),
+      newestFirst.map((alert) => alert.id),
     );
     expect(rows.map((row) => row.querySelector('.alert-pill[data-severity]')?.textContent)).toEqual(
-      dummyAlerts.map((alert) => alert.severity),
+      newestFirst.map((alert) => alert.severity),
     );
     expect(rows.map((row) => row.querySelector('.alert-pill[data-status]')?.textContent)).toEqual(
-      dummyAlerts.map((alert) => alert.status),
+      newestFirst.map((alert) => alert.status),
     );
     const timestamps = [...compiled.querySelectorAll<HTMLTimeElement>('tbody time')];
     expect(timestamps.map((time) => time.dateTime)).toEqual(
-      dummyAlerts.map((alert) => alert.createdAt),
+      newestFirst.map((alert) => alert.createdAt),
     );
     expect(timestamps.map((time) => time.textContent)).toEqual(
-      dummyAlerts.map((alert) => formatDate(alert.createdAt, 'MMM d, y, HH:mm', 'en-US')),
+      newestFirst.map((alert) => formatDate(alert.createdAt, 'MMM d, y, HH:mm', 'en-US')),
     );
   });
 
@@ -90,7 +94,7 @@ describe('App', () => {
     await fixture.whenStable();
     const compiled = fixture.nativeElement as HTMLElement;
     const buttons = [...compiled.querySelectorAll<HTMLButtonElement>('.alert-resolve-button')];
-    const eligibleAlerts = dummyAlerts.filter(
+    const eligibleAlerts = newestFirst.filter(
       ({ status }) => status === 'OPEN' || status === 'ESCALATED',
     );
 
@@ -112,6 +116,8 @@ describe('App', () => {
     const visibleIds = () =>
       [...compiled.querySelectorAll('tbody th')].map((cell) => cell.textContent.trim());
     const heading = compiled.querySelector('main h2');
+    const clearButton = compiled.querySelector<HTMLButtonElement>('.clear-filters-button')!;
+    expect(clearButton.disabled).toBe(true);
 
     async function selectFilter(id: string, value: string) {
       const select = compiled.querySelector<HTMLSelectElement>(`#${id}`)!;
@@ -125,8 +131,9 @@ describe('App', () => {
     expect(compiled.querySelector('aside')).not.toBeNull();
 
     await selectFilter('status', 'ESCALATED');
+    expect(clearButton.disabled).toBe(false);
     expect(compiled.querySelector('aside')).toBeNull();
-    const escalated = dummyAlerts.filter(({ status }) => status === 'ESCALATED');
+    const escalated = newestFirst.filter(({ status }) => status === 'ESCALATED');
     expect(visibleIds()).toEqual(escalated.map(({ id }) => id));
     expect(heading?.textContent).toBe(`Alerts (${escalated.length})`);
 
@@ -145,6 +152,7 @@ describe('App', () => {
     await selectFilter('status', '');
     expect(visibleIds()).toHaveLength(60);
     expect(heading?.textContent).toBe('Alerts (60)');
+    expect(clearButton.disabled).toBe(true);
 
     await selectFilter('status', 'AUTO_CLOSED');
     await selectFilter('severity', 'CRITICAL');
@@ -157,7 +165,16 @@ describe('App', () => {
 
     await selectFilter('source', '');
     expect(compiled.querySelector('[role="status"]')).toBeNull();
-    expect(visibleIds()).toEqual(['AL-034', 'AL-035']);
+    expect(visibleIds()).toEqual(['AL-035', 'AL-034']);
+
+    await selectFilter('source', 'auth-svc');
+    clearButton.click();
+    await fixture.whenStable();
+    expect(clearButton.disabled).toBe(true);
+    const filters = [...compiled.querySelectorAll<HTMLSelectElement>('.alert-filters select')];
+    expect(filters.map((filter) => filter.value)).toEqual(['', '', '']);
+    expect(heading?.textContent).toBe('Alerts (60)');
+    expect(visibleIds()).toEqual(newestFirst.map(({ id }) => id));
   });
 
   it('should generate chronological histories that match each alert status', () => {
@@ -190,10 +207,10 @@ describe('App', () => {
     const rows = compiled.querySelectorAll('tbody tr');
     rows[0].querySelector('td')!.click();
     await fixture.whenStable();
-    expect(compiled.querySelector('aside h3')?.textContent).toBe(dummyAlerts[0].id);
+    expect(compiled.querySelector('aside h3')?.textContent).toBe(newestFirst[0].id);
 
-    const alertIndex = dummyAlerts.findIndex(({ status }) => status === 'RESOLVED');
-    const alert = dummyAlerts[alertIndex];
+    const alertIndex = newestFirst.findIndex(({ status }) => status === 'RESOLVED');
+    const alert = newestFirst[alertIndex];
     const button = rows[alertIndex].querySelector('button')!;
     button.click();
     await fixture.whenStable();
@@ -238,13 +255,13 @@ describe('App', () => {
     await fixture.whenStable();
     expect(compiled.querySelector<HTMLInputElement>('aside input')?.value).toBe('');
 
-    const escalatedIndex = dummyAlerts.findIndex(({ status }) => status === 'ESCALATED');
+    const escalatedIndex = newestFirst.findIndex(({ status }) => status === 'ESCALATED');
     buttons[escalatedIndex].click();
     await fixture.whenStable();
     expect(compiled.querySelector('aside form')).not.toBeNull();
 
     for (const status of ['AUTO_CLOSED', 'RESOLVED']) {
-      const index = dummyAlerts.findIndex((alert) => alert.status === status);
+      const index = newestFirst.findIndex((alert) => alert.status === status);
       buttons[index].click();
       await fixture.whenStable();
       expect(compiled.querySelector('aside form')).toBeNull();

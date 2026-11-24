@@ -23,6 +23,7 @@
 .alert-filters {
   display: flex;
   flex-wrap: wrap;
+  align-items: end;
   gap: 1rem;
 }
 
@@ -37,13 +38,17 @@
   font-weight: 600;
 }
 
-.alert-filter select {
+.alert-filter select,
+.clear-filters-button {
   padding: 0.625rem;
   border: 1px solid #64748b;
   border-radius: 0.375rem;
   background-color: #fff;
-  color: inherit;
   font: inherit;
+}
+
+.clear-filters-button:enabled {
+  cursor: pointer;
 }
 
 .alerts-layout {
@@ -114,7 +119,8 @@
   background-color: #f8fafc;
 }
 
-.alerts-table tbody tr.is-selected {
+.alerts-table tbody tr.is-selected,
+.alert-resolve-button:hover {
   background-color: #eff6ff;
 }
 
@@ -139,10 +145,6 @@
   font-size: 0.75rem;
   font-weight: 600;
   cursor: pointer;
-}
-
-.alert-resolve-button:hover {
-  background-color: #eff6ff;
 }
 
 .alert-pill {
